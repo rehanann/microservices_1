@@ -1,0 +1,87 @@
+---
+- hosts: all
+  remote_user: vagrant
+  become: yes
+  become_method: sudo
+  vars:
+    - user_name: docker
+    - group_name: docker
+  
+  tasks:
+    - name: Install Docker packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      with_items:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - software-properties-common
+      tags:
+        - docker
+
+    - name: Add Docker official repo
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      tags:
+        - docker
+
+    - name: Verify key with finger prints
+      apt_key:
+        id: 0EBFCD88
+        state: present
+      tags:
+        - docker
+    
+    - name: Docker Setup stable repo
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+        state: present
+        update_cache: yes
+      tags:
+        - docker
+      
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      tags:
+        - docker
+
+    - name: Install docker
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: yes
+      notify: Start docker on boot
+      tags:
+        - docker
+    
+    - name: Docker Create group account
+      group: name={{ group_name }} state=present
+      tags:
+        - docker
+    
+    - name: Docker Create user account
+      user: name={{ user_name }} group={{ group_name }} shell=/bin/bash state=present
+      tags:
+        - docker
+
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        state: present
+        update_cache: yes
+      tags:
+        - docker
+    
+  handlers:
+    - name: Start docker on boot
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+      tags:
+        - docker
+
